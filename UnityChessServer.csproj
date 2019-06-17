@@ -40,6 +40,7 @@
 	<ItemGroup>
 		<Compile Include="Properties\AssemblyInfo.cs" />
 		<Compile Include="src\Program.cs" />
+		<Compile Include="src\Server.cs" />
 		<Compile Include="src\UnityChessLib\AI\AssessedMove.cs" />
 		<Compile Include="src\UnityChessLib\AI\TreeNode.cs" />
 		<Compile Include="src\UnityChessLib\Base\Board.cs" />
