@@ -1,10 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Threading.Tasks;
 using UnityChess;
 
 namespace UnityChessServer {
@@ -12,7 +10,7 @@ namespace UnityChessServer {
 		private const int LocalPort = 23000;
 		private const int DefaultBacklog = 4;
 		
-		public ServerState State { get; private set; }
+		public ServerState State { get; }
 
 		private Socket listenSocket;
 		private IPEndPoint localEndPoint;
@@ -48,7 +46,7 @@ namespace UnityChessServer {
 				while (!game.TryExecuteMove(move));	// 4) execute move
 
 				// 5) send updated game to each player	goto loop 1:
-				latestHalfMove = game.PreviousMoves.Current;
+				latestHalfMove = game.HalfMoveTimeline.Current;
 			} while (!latestHalfMove.CausedCheckmate && !latestHalfMove.CausedStalemate);
 		}
 
