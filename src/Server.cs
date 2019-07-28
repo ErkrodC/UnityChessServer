@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -12,16 +13,14 @@ namespace UnityChessServer {
 		
 		public ServerState State { get; }
 
-		private Socket listenSocket;
-		private IPEndPoint localEndPoint;
-		private List<IPEndPoint> playerRemoteEndpoints;
+		private readonly Socket listenSocket;
+		private readonly List<IPEndPoint> playerRemoteEndpoints;
 
-		private int numPlayers;
+		private readonly int numPlayers;
 
 		public Server(int numPlayers) {
 			listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-			localEndPoint = new IPEndPoint(IPAddress.Any, LocalPort);
-			listenSocket.Bind(localEndPoint);
+			listenSocket.Bind(new IPEndPoint(IPAddress.Any, LocalPort));
 
 			this.numPlayers = numPlayers;
 			playerRemoteEndpoints = new List<IPEndPoint>(numPlayers);
@@ -56,17 +55,24 @@ namespace UnityChessServer {
 			
 			BinaryFormatter bf = new BinaryFormatter();
 			using(MemoryStream ms = new MemoryStream(buffer)) {
-				return (Movement) bf.Deserialize(ms);
+				Movement move = (Movement) bf.Deserialize(ms);
+				Console.WriteLine($"Received move: {move}");
+				return move;
 			}
 		}
 
 		private void WaitForPlayers() {
-			listenSocket.Listen(DefaultBacklog);
-			Socket playerSocket = listenSocket.Accept();
-			
-			playerRemoteEndpoints.Add(playerSocket.RemoteEndPoint as IPEndPoint);
-			if (playerRemoteEndpoints.Count < numPlayers) WaitForPlayers();
-			//else start game
+			while (true) {
+				listenSocket.Listen(DefaultBacklog);
+				Socket playerSocket = listenSocket.Accept();
+
+				playerRemoteEndpoints.Add(playerSocket.RemoteEndPoint as IPEndPoint);
+				Console.WriteLine("Player Connected");
+				if (playerRemoteEndpoints.Count < numPlayers) continue;
+				
+				Start();
+				break;
+			}
 		}
 
 		public enum ServerState {
