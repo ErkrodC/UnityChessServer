@@ -64,6 +64,9 @@
 		<Compile Include="src\UnityChessLib\GameStringInterchange\GameConditions.cs" />
 		<Compile Include="src\UnityChessLib\GameStringInterchange\IGameStringInterchanger.cs" />
 		<Compile Include="src\UnityChessLib\GameStringInterchange\PGNInterchanger.cs" />
+		<Compile Include="src\UnityChessLib\Networking\UnityChessDataPacket.cs" />
+		<Compile Include="src\UnityChessLib\Networking\UnityChessDataPacketHeader.cs" />
+		<Compile Include="src\UnityChessLib\Networking\UserCommand.cs" />
 		<Compile Include="src\UnityChessLib\Pieces\Bishop.cs" />
 		<Compile Include="src\UnityChessLib\Pieces\King.cs" />
 		<Compile Include="src\UnityChessLib\Pieces\Knight.cs" />

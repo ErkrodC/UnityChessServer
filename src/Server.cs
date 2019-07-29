@@ -1,31 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.InteropServices;
 using UnityChess;
+using UnityChess.Networking;
 
 namespace UnityChessServer {
 	public class Server {
 		private const int LocalPort = 23000;
 		private const int DefaultBacklog = 4;
-		
-		public ServerState State { get; }
+		private const int NumPlayersNeededToStartGame = 1;
 
 		private readonly Socket listenSocket;
-		private readonly List<IPEndPoint> playerRemoteEndpoints;
+		private readonly List<Socket> playerSockets;
 
-		private readonly int numPlayers;
-
-		public Server(int numPlayers) {
+		public Server() {
 			listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			listenSocket.Bind(new IPEndPoint(IPAddress.Any, LocalPort));
-
-			this.numPlayers = numPlayers;
-			playerRemoteEndpoints = new List<IPEndPoint>(numPlayers);
-			
-			State = ServerState.None;
+			playerSockets = new List<Socket>(NumPlayersNeededToStartGame);
 		}
 
 		public void Start() {
@@ -39,25 +32,44 @@ namespace UnityChessServer {
 			HalfMove latestHalfMove;
 			
 			do {
-				Movement move;
-				
-				do move = GetMoveFromPlayer();	// 3) listen/wait for each player move	loop 1:
-				while (!game.TryExecuteMove(move));	// 4) execute move
+				bool moveExecuted;
+				do {
+					Movement move = GetMoveFromPlayer();	// 3) listen/wait for each player move	loop 1:
+					moveExecuted = game.TryExecuteMove(move); // 4) execute move
+					
+					if (moveExecuted) {
+						ReplicateGameState();
+					} else {
+						
+					}
+				} while (!moveExecuted); // 4a) wait for next move if received move was invalid
 
-				// 5) send updated game to each player	goto loop 1:
+				// 5) replicate game state
 				latestHalfMove = game.HalfMoveTimeline.Current;
-			} while (!latestHalfMove.CausedCheckmate && !latestHalfMove.CausedStalemate);
+			} while (!latestHalfMove.CausedCheckmate && !latestHalfMove.CausedStalemate); // 6) wait for next move if game not finished
 		}
 
 		private Movement GetMoveFromPlayer() {
 			byte[] buffer = new byte[1024];
-			listenSocket.Receive(buffer, 1024, SocketFlags.None);
-			
-			BinaryFormatter bf = new BinaryFormatter();
-			using(MemoryStream ms = new MemoryStream(buffer)) {
-				Movement move = (Movement) bf.Deserialize(ms);
-				Console.WriteLine($"Received move: {move}");
-				return move;
+			playerSockets[0].Receive(buffer, 1024, SocketFlags.None);
+
+			GCHandle pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+			IntPtr ptr = pinnedArray.AddrOfPinnedObject();
+
+			UnityChessDataPacket dataPacket = Marshal.PtrToStructure<UnityChessDataPacket>(ptr);
+			pinnedArray.Free();
+
+			switch (dataPacket.UserCommand) {
+				case UserCommand.ExecuteMove:
+					Square startSquare = new Square(dataPacket.byte0, dataPacket.byte1); // TODO send full move, not just start & end square (i.e. pack all move data into dataPacket fields a.k.a. serialization method)
+					Square endSquare = new Square(dataPacket.byte2, dataPacket.byte3);
+					
+					// TODO move conversion of data packet to move into deserialization method
+					
+					Console.WriteLine($"Received move: {startSquare}->{endSquare}");
+					return null;
+				default:
+					return null;
 			}
 		}
 
@@ -66,20 +78,18 @@ namespace UnityChessServer {
 				listenSocket.Listen(DefaultBacklog);
 				Socket playerSocket = listenSocket.Accept();
 
-				playerRemoteEndpoints.Add(playerSocket.RemoteEndPoint as IPEndPoint);
+				playerSockets.Add(playerSocket);
 				Console.WriteLine("Player Connected");
-				if (playerRemoteEndpoints.Count < numPlayers) continue;
 				
-				Start();
+				if (playerSockets.Count < NumPlayersNeededToStartGame) { continue; }
 				break;
 			}
 		}
 
-		public enum ServerState {
-			None,
-			WaitingForPlayers,
-			ListeningForMove,
-			Finished
+		private void ReplicateGameState() {
+			foreach (Socket playerSocket in playerSockets) {
+				// Send game state (e.g. serialized game instance)
+			}
 		}
 	}
 }

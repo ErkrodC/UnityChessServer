@@ -2,10 +2,8 @@
 
 namespace UnityChessServer {
 	internal class Program {
-		private const int DefaultPlayersRequiredToStartGame = 2;
-		
 		public static void Main(string[] args) {
-			Server server = new Server(DefaultPlayersRequiredToStartGame);
+			Server server = new Server();
 			server.Start();
 			Console.ReadLine();
 		}
